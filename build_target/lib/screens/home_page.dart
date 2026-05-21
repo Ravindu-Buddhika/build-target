@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../database/db_helper.dart'; // DBHelper එක import කරන්න
+import '../database/db_helper.dart'; 
 import 'package:build_target/screens/add_target_screen.dart';
+import 'goal_details_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -10,14 +11,14 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Database එකෙන් දත්ත ලබාගන්නා Function එක
   Future<Map<String, dynamic>> _fetchHomeData() async {
     final db = await DBHelper.database;
     final userList = await db.query('Users', limit: 1);
     final goalsList = await db.query('Goals');
 
-    // හැම Goal එකකටම අදාළ progress එක ගණනය කරමු
     List<Map<String, dynamic>> goalsWithProgress = [];
+    int totalDoneGoals = 0;
+
     for (var goal in goalsList) {
       final tasks = await db.query(
         'Tasks',
@@ -29,6 +30,8 @@ class _HomePageState extends State<HomePage> {
       if (tasks.isNotEmpty) {
         int doneTasks = tasks.where((t) => t['is_done'] == 1).length;
         progress = (doneTasks / tasks.length) * 100;
+        
+        if (progress == 100) totalDoneGoals++;
       }
 
       var goalMap = Map<String, dynamic>.from(goal);
@@ -39,6 +42,7 @@ class _HomePageState extends State<HomePage> {
     return {
       'user': userList.isNotEmpty ? userList.first : null,
       'goals': goalsWithProgress,
+      'doneCount': totalDoneGoals,
     };
   }
 
@@ -66,13 +70,14 @@ class _HomePageState extends State<HomePage> {
 
           final user = snapshot.data!['user'];
           final goals = snapshot.data!['goals'] as List<Map<String, dynamic>>;
+          final doneCount = snapshot.data!['doneCount'];
 
           return SafeArea(
             child: SingleChildScrollView(
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-                  // --- Upper Profile Card Section ---
+
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: Container(
@@ -91,7 +96,7 @@ class _HomePageState extends State<HomePage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    "Hello ${user['name']}", // Database එකෙන් නම එනවා
+                                    "Hello ${user['name']}",
                                     style: const TextStyle(
                                       color: Colors.black,
                                       fontSize: 24,
@@ -111,6 +116,7 @@ class _HomePageState extends State<HomePage> {
                                 'assets/images/Elite_Master-removebg-preview.png',
                                 width: 100,
                                 height: 100,
+                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, size: 50),
                               ),
                             ],
                           ),
@@ -118,12 +124,9 @@ class _HomePageState extends State<HomePage> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildStatItem("8", "Stircke"),
-                              _buildStatItem(
-                                goals.length.toString(),
-                                "Active",
-                              ), // Dynamic count
-                              _buildStatItem("1", "Done"),
+                              _buildStatItem("8", "Strike"),
+                              _buildStatItem(goals.length.toString(), "Active"),
+                              _buildStatItem(doneCount.toString(), "Done"),
                             ],
                           ),
                         ],
@@ -133,7 +136,6 @@ class _HomePageState extends State<HomePage> {
 
                   const SizedBox(height: 30),
 
-                  // --- Ongoing Goals Section ---
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
                     child: Column(
@@ -141,8 +143,8 @@ class _HomePageState extends State<HomePage> {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 15),
                           child: _buildGoalCard(
-                            goal['goal_name'],
-                            goal['computed_progress'],
+                            goal,
+                            goal['computed_progress'] ?? 0,
                           ),
                         );
                       }).toList(),
@@ -160,7 +162,6 @@ class _HomePageState extends State<HomePage> {
             context,
             MaterialPageRoute(builder: (context) => const AddTargetScreen()),
           ).then((_) {
-            // AddTargetScreen එකෙන් පස්සට (Back) ආපු ගමන් මේක වැඩ කරනවා
             setState(() {});
           });
         },
@@ -189,49 +190,62 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildGoalCard(String title, int progress) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFD700),
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 20,
-              fontWeight: FontWeight.w500,
-            ),
+  Widget _buildGoalCard(Map<String, dynamic> goal, int progress) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => GoalDetailsScreen(goal: goal),
           ),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 45,
-                height: 45,
-                child: CircularProgressIndicator(
-                  value: progress / 100,
-                  backgroundColor: Colors.black12,
-                  color: const Color(0xFF4CAF50),
-                  strokeWidth: 4,
-                ),
-              ),
-              Text(
-                "$progress%",
+        ).then((_) => setState(() {}));
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFD700),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                goal['goal_name'],
                 style: const TextStyle(
                   color: Colors.black,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w500,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
-            ],
-          ),
-        ],
+            ),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 45,
+                  height: 45,
+                  child: CircularProgressIndicator(
+                    value: progress / 100,
+                    backgroundColor: Colors.black12,
+                    color: const Color(0xFF4CAF50),
+                    strokeWidth: 4,
+                  ),
+                ),
+                Text(
+                  "$progress%",
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
