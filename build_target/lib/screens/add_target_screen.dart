@@ -16,9 +16,8 @@ class _AddTargetScreenState extends State<AddTargetScreen> {
   double _selectedWeeks = 1;
   String _selectedLevel = 'Beginner';
 
-  // AI ප්ලෑන් එක හදලා Database එකට Save කරන ප්‍රධාන Function එක
   Future<void> _handleBuildPlan() async {
-    // Target එක හිස් නම් ඉදිරියට යන්න එපා
+
     if (_targetController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please enter your target first!")),
@@ -26,7 +25,7 @@ class _AddTargetScreenState extends State<AddTargetScreen> {
       return;
     }
 
-    // 1. Loading Dialog එක පෙන්වීම
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -35,46 +34,45 @@ class _AddTargetScreenState extends State<AddTargetScreen> {
     );
 
     try {
-      // 2. AI Service එක හරහා ප්ලෑන් එක ලබා ගැනීම
+
       List<String> planSteps = await AIService.generatePlan(
         target: _targetController.text,
         duration: _selectedWeeks.toInt().toString(),
         level: _selectedLevel,
         description: _descController
-            .text, // මෙතන '_descController' නිවැරදිව පාවිච්චි කර ඇත
+            .text,
       );
 
       if (planSteps.isNotEmpty) {
         final db = await DBHelper.database;
 
-        // 3. Goals Table එකට දත්ත ඇතුළත් කිරීම
+  
         int goalId = await db.insert('Goals', {
-          'user_id': 1, // දැනට default 1 ලෙස ගමු
+          'user_id': 1, 
           'goal_name': _targetController.text,
           'full_plan_content': planSteps.join(
             ', ',
-          ), // සම්පූර්ණ ප්ලෑන් එක string එකක් ලෙස
+          ),
         });
 
-        // 4. Tasks Table එකට AI එකෙන් ආපු හැම Step එකක්ම ඇතුළත් කිරීම
+
         for (var step in planSteps) {
           await db.insert('Tasks', {
             'goal_id': goalId,
-            'task_title': step, // 'task_name' වෙනුවට 'task_title' ලෙස වෙනස් කරන්න
-            'week_number': 1, // මෙන්න මේ අලුත් පේළි ටිකත් එක් කරන්න
-            'day_number': 1, // මොකද ඔයාගේ DB එකේ මේවා null වෙන්න බැරි වෙන්න ඇති
+            'task_title': step, 
+            'week_number': 1, 
+            'day_number': 1, 
             'task_desc': step,
             'is_done': 0,
           });
         }
 
-        // සාර්ථක නම් Screen එකෙන් ඉවත් වීම
         if (mounted) {
-          Navigator.pop(context); // Loading එක close කරන්න
-          Navigator.pop(context); // Home එකට යන්න
+          Navigator.pop(context);
+          Navigator.pop(context);
         }
       } else {
-        // ප්ලෑන් එක ආවේ නැත්නම් loading එක අයින් කර error එකක් පෙන්වන්න
+
         if (mounted) Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -165,7 +163,7 @@ class _AddTargetScreenState extends State<AddTargetScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: _handleBuildPlan, // මෙතනදී AI function එක call වේ
+                  onPressed: _handleBuildPlan,
                   child: const Text(
                     "Build My Plan",
                     style: TextStyle(
