@@ -15,7 +15,6 @@ class AIService {
         apiKey: _apiKey,
       );
 
-      // සති ගණන අනුව දින ගණන ගණනය කිරීම
       int totalDays = int.parse(duration) * 7;
 
       final prompt = """
@@ -34,7 +33,6 @@ class AIService {
       String text = response.text ?? "";
 
       if (text.isNotEmpty) {
-        // කොමාවෙන් වෙන් කරලා ලිස්ට් එකක් හදාගැනීම (JSON Decode අවශ්‍ය නැත)
         return text.split(',').map((task) => task.trim()).where((task) => task.isNotEmpty).toList();
       }
       
