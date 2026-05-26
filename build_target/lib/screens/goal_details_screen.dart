@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../database/db_helper.dart';
 
 class GoalDetailsScreen extends StatefulWidget {
@@ -22,12 +23,19 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       whereArgs: [taskId],
     );
 
-    // Logic to check if all tasks are completed
     if (newStatus == 1) {
+      // මෙතනදී ලැබෙන trophy එකේ නම අල්ලගන්නවා
+      String? unlockedTrophy = await _updateStreakAndTrophies();
+      
+      if (unlockedTrophy != null && mounted) {
+        _showTrophyPopup(unlockedTrophy);
+      }
+
       final allTasks = await _fetchTasks();
       int doneCount = allTasks.where((t) => t['is_done'] == 1).length;
 
       if (doneCount == allTasks.length) {
+        await db.execute('UPDATE Trophies SET ultimate_finisher_count = ultimate_finisher_count + 1 WHERE user_id = ?', [1]);
         _showSuccessDialog();
       }
     }
@@ -35,12 +43,123 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     setState(() {});
   }
 
+  // මෙතන දැන් return type එක String? කළා අලුත් trophy එක UI එකට යවන්න
+  Future<String?> _updateStreakAndTrophies() async {
+    final db = await DBHelper.database;
+    final List<Map<String, dynamic>> userResult = await db.query('Users', limit: 1);
+    
+    if (userResult.isEmpty) return null;
+
+    final user = userResult.first;
+    String lastDateStr = user['last_activity_date'] ?? "";
+    int currentStreak = user['current_streak'] ?? 0;
+    int longestStreak = user['longest_streak'] ?? 0;
+
+    String todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    
+    if (lastDateStr == todayStr) return null;
+
+    DateTime today = DateTime.parse(todayStr);
+    bool isConsecutive = false;
+    String? newTrophy;
+
+    if (lastDateStr.isNotEmpty) {
+      DateTime lastDate = DateTime.parse(lastDateStr);
+      if (today.difference(lastDate).inDays == 1) {
+        isConsecutive = true;
+      }
+    } else {
+      isConsecutive = true;
+    }
+
+    if (isConsecutive) {
+      currentStreak++;
+    } else {
+      currentStreak = 1;
+    }
+
+    if (currentStreak > longestStreak) {
+      longestStreak = currentStreak;
+    }
+
+    await db.update('Users', {
+      'last_activity_date': todayStr,
+      'current_streak': currentStreak,
+      'longest_streak': longestStreak,
+    }, where: 'id = ?', whereArgs: [user['id']]);
+
+    // First Spark Trophy
+    await db.execute('UPDATE Trophies SET first_spark_count = first_spark_count + 1 WHERE user_id = ?', [user['id']]);
+    newTrophy = "First Spark";
+
+    // Triple Threat
+    if (currentStreak == 3) {
+      await db.execute('UPDATE Trophies SET triple_threat_count = triple_threat_count + 1 WHERE user_id = ?', [user['id']]);
+      newTrophy = "Triple Threat";
+    }
+
+    // Week Warrior
+    if (currentStreak == 7) {
+      await db.execute('UPDATE Trophies SET week_warrior_count = week_warrior_count + 1 WHERE user_id = ?', [user['id']]);
+      newTrophy = "Week Warrior";
+    }
+
+    // Fortnight Force
+    if (currentStreak == 14) {
+      await db.execute('UPDATE Trophies SET fortnight_force_count = fortnight_force_count + 1 WHERE user_id = ?', [user['id']]);
+      newTrophy = "Fortnight Force";
+    }
+
+    return newTrophy;
+  }
+
+  // --- Achievement Popup UI ---
+  void _showTrophyPopup(String trophyName) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: const Color(0xFF1A1A1A),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.emoji_events, color: Colors.redAccent, size: 80),
+              const SizedBox(height: 15),
+              const Text(
+                "ACHIEVEMENT UNLOCKED!",
+                style: TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 2),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                trophyName,
+                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFD700),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("AWESOME", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _deleteGoal(int goalId) async {
     final db = await DBHelper.database;
     await db.delete('Goals', where: 'id = ?', whereArgs: [goalId]);
-    if (mounted) {
-      Navigator.pop(context); // Go back to Home Page after deletion
-    }
+    if (mounted) Navigator.pop(context);
   }
 
   void _showSuccessDialog() {
@@ -173,30 +292,19 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               Expanded(
                                 child: Text(
                                   task['task_title'],
                                   style: TextStyle(
-                                    color: task['is_done'] == 1
-                                        ? Colors.black
-                                        : Colors.white,
-                                    decoration: task['is_done'] == 1
-                                        ? TextDecoration.lineThrough
-                                        : null,
+                                    color: task['is_done'] == 1 ? Colors.black : Colors.white,
+                                    decoration: task['is_done'] == 1 ? TextDecoration.lineThrough : null,
                                   ),
-                                  softWrap: true,
                                 ),
                               ),
-                              const SizedBox(width: 10),
                               Icon(
-                                task['is_done'] == 1
-                                    ? Icons.check_circle
-                                    : Icons.circle_outlined,
-                                color: task['is_done'] == 1
-                                    ? Colors.black
-                                    : Colors.white,
+                                task['is_done'] == 1 ? Icons.check_circle : Icons.circle_outlined,
+                                color: task['is_done'] == 1 ? Colors.black : Colors.white,
                               ),
                             ],
                           ),
