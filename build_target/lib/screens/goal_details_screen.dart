@@ -10,7 +10,6 @@ class GoalDetailsScreen extends StatefulWidget {
 }
 
 class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
-
   Future<void> _toggleTaskStatus(int taskId, int currentStatus) async {
     final db = await DBHelper.database;
     await db.update(
@@ -24,7 +23,11 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
 
   Future<List<Map<String, dynamic>>> _fetchTasks() async {
     final db = await DBHelper.database;
-    return await db.query('Tasks', where: 'goal_id = ?', whereArgs: [widget.goal['id']]);
+    return await db.query(
+      'Tasks',
+      where: 'goal_id = ?',
+      whereArgs: [widget.goal['id']],
+    );
   }
 
   @override
@@ -42,8 +45,9 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _fetchTasks(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          
+          if (!snapshot.hasData)
+            return const Center(child: CircularProgressIndicator());
+
           final tasks = snapshot.data!;
           int doneCount = tasks.where((t) => t['is_done'] == 1).length;
           double progress = tasks.isEmpty ? 0 : (doneCount / tasks.length);
@@ -51,9 +55,16 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
           return SingleChildScrollView(
             child: Column(
               children: [
-                Text(widget.goal['goal_name'], style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                Text(
+                  widget.goal['goal_name'],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 30),
-                
+
                 Stack(
                   alignment: Alignment.center,
                   children: [
@@ -64,35 +75,69 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                         value: progress,
                         strokeWidth: 15,
                         backgroundColor: Colors.white10,
-                        color: Colors.redAccent, // Figma එකේ තියෙන පාට
+                        color: Colors.redAccent,
                       ),
                     ),
-                    Text("${(progress * 100).toInt()}%", style: const TextStyle(color: Colors.white, fontSize: 40, fontWeight: FontWeight.bold)),
+                    Text(
+                      "${(progress * 100).toInt()}%",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 50),
-                
+
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     children: tasks.map((task) {
                       return GestureDetector(
-                        onTap: () => _toggleTaskStatus(task['id'], task['is_done']),
+                        onTap: () =>
+                            _toggleTaskStatus(task['id'], task['is_done']),
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 10),
                           padding: const EdgeInsets.all(15),
                           decoration: BoxDecoration(
-                            color: task['is_done'] == 1 ? Colors.lightGreenAccent.withOpacity(0.8) : Colors.white10,
+                            color: task['is_done'] == 1
+                                ? Colors.lightGreenAccent.withOpacity(0.8)
+                                : Colors.white10,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment
+                                .center, 
                             children: [
-                              Text(task['task_title'], style: TextStyle(color: task['is_done'] == 1 ? Colors.black : Colors.white)),
+
+                              Expanded(
+                                child: Text(
+                                  task['task_title'],
+                                  style: TextStyle(
+                                    color: task['is_done'] == 1
+                                        ? Colors.black
+                                        : Colors.white,
+
+                                    decoration: task['is_done'] == 1
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                  ),
+                                  softWrap: true,
+                                ),
+                              ),
+                              const SizedBox(
+                                width: 10,
+                              ), 
                               Icon(
-                                task['is_done'] == 1 ? Icons.check_circle : Icons.circle_outlined,
-                                color: task['is_done'] == 1 ? Colors.black : Colors.white,
+                                task['is_done'] == 1
+                                    ? Icons.check_circle
+                                    : Icons.circle_outlined,
+                                color: task['is_done'] == 1
+                                    ? Colors.black
+                                    : Colors.white,
                               ),
                             ],
                           ),
