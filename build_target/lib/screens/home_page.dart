@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../database/db_helper.dart'; 
 import 'package:build_target/screens/add_target_screen.dart';
 import 'goal_details_screen.dart';
+import 'achievement_screen.dart'; // Trophy Cabinet screen එක import කරගන්න
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -71,6 +72,9 @@ class _HomePageState extends State<HomePage> {
           final user = snapshot.data!['user'];
           final goals = snapshot.data!['goals'] as List<Map<String, dynamic>>;
           final doneCount = snapshot.data!['doneCount'];
+          
+          // DB එකෙන් dynamic ව එන current streak එක ගන්නවා (නැත්නම් 0)
+          final currentStreak = user['current_streak']?.toString() ?? "0";
 
           return SafeArea(
             child: SingleChildScrollView(
@@ -80,56 +84,70 @@ class _HomePageState extends State<HomePage> {
 
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE2E2BE),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Hello ${user['name']}",
-                                    style: const TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () {
+                        // Hero Section එක ක්ලික් කරාම Trophy Cabinet එකට යනවා
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AchievementScreen()),
+                        ).then((_) {
+                          // Cabinet එකේ ඉඳන් ආපහු එද්දී home එක refresh වෙන්න
+                          setState(() {});
+                        });
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E2BE),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Hello ${user['name']}",
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  ),
-                                  const Text(
-                                    "Lets Achieve something",
-                                    style: TextStyle(
-                                      color: Colors.black54,
-                                      fontSize: 12,
+                                    const Text(
+                                      "Lets Achieve something",
+                                      style: TextStyle(
+                                        color: Colors.black54,
+                                        fontSize: 12,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              Image.asset(
-                                'assets/images/Elite_Master-removebg-preview.png',
-                                width: 100,
-                                height: 100,
-                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, size: 50),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 30),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _buildStatItem("8", "Strike"),
-                              _buildStatItem(goals.length.toString(), "Active"),
-                              _buildStatItem(doneCount.toString(), "Done"),
-                            ],
-                          ),
-                        ],
+                                  ],
+                                ),
+                                Image.asset(
+                                  'assets/images/Elite_Master-removebg-preview.png',
+                                  width: 100,
+                                  height: 100,
+                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, size: 50),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 30),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                // මෙතනට dynamic streak එක පාස් කළා
+                                _buildStatItem(currentStreak, "Strike"),
+                                _buildStatItem(goals.length.toString(), "Active"),
+                                _buildStatItem(doneCount.toString(), "Done"),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -206,7 +224,7 @@ class _HomePageState extends State<HomePage> {
       onDismissed: (direction) async {
         final db = await DBHelper.database;
         await db.delete('Goals', where: 'id = ?', whereArgs: [goal['id']]);
-        setState(() {}); // UI එක refresh කරන්න
+        setState(() {}); 
       },
       child: InkWell(
         onTap: () {
