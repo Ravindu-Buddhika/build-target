@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../database/db_helper.dart';
+import '../services/xpservice.dart'; // XPService එක import කළා
 
 class GoalDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> goal;
@@ -24,6 +25,9 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     );
 
     if (newStatus == 1) {
+      // 1. ටාස්ක් එකක්Done කරපු නිසා Task XP ලබා දීම
+      await XPService.addXP(XPService.taskXp);
+
       // මෙතනදී ලැබෙන trophy එකේ නම අල්ලගන්නවා
       String? unlockedTrophy = await _updateStreakAndTrophies();
       
@@ -35,6 +39,9 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       int doneCount = allTasks.where((t) => t['is_done'] == 1).length;
 
       if (doneCount == allTasks.length) {
+        // 2. මුළු Goal එකම 100% නිම කළ නිසා Goal Completion XP ලබා දීම
+        await XPService.addXP(XPService.goalCompletionXp);
+
         await db.execute('UPDATE Trophies SET ultimate_finisher_count = ultimate_finisher_count + 1 WHERE user_id = ?', [1]);
         _showSuccessDialog();
       }
@@ -179,7 +186,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     );
   }
 
-  Future<List<Map<String, dynamic>>> _fetchTasks() async {
+  Future<List<Map<String, dynamic>> > _fetchTasks() async {
     final db = await DBHelper.database;
     return await db.query(
       'Tasks',

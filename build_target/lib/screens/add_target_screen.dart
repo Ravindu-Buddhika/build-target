@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../database/db_helper.dart';
 import '../services/ai_service.dart';
+import '../services/xpservice.dart'; // XPService එක import කළා
 
 class AddTargetScreen extends StatefulWidget {
   const AddTargetScreen({super.key});
@@ -10,7 +11,6 @@ class AddTargetScreen extends StatefulWidget {
 }
 
 class _AddTargetScreenState extends State<AddTargetScreen> {
-  // Controller names නිවැරදිව define කිරීම
   final TextEditingController _targetController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
   double _selectedWeeks = 1;
@@ -25,7 +25,6 @@ class _AddTargetScreenState extends State<AddTargetScreen> {
       return;
     }
 
-
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -34,27 +33,21 @@ class _AddTargetScreenState extends State<AddTargetScreen> {
     );
 
     try {
-
       List<String> planSteps = await AIService.generatePlan(
         target: _targetController.text,
         duration: _selectedWeeks.toInt().toString(),
         level: _selectedLevel,
-        description: _descController
-            .text,
+        description: _descController.text,
       );
 
       if (planSteps.isNotEmpty) {
         final db = await DBHelper.database;
 
-  
         int goalId = await db.insert('Goals', {
           'user_id': 1, 
           'goal_name': _targetController.text,
-          'full_plan_content': planSteps.join(
-            ', ',
-          ),
+          'full_plan_content': planSteps.join(', '),
         });
-
 
         for (var step in planSteps) {
           await db.insert('Tasks', {
@@ -67,12 +60,14 @@ class _AddTargetScreenState extends State<AddTargetScreen> {
           });
         }
 
+        // 3. Goal එක සක්සස්ෆුල් ක්‍රියේට් වුණු නිසා Goal Creation XP ලබා දීම
+        await XPService.addXP(XPService.goalCreationXp);
+
         if (mounted) {
-          Navigator.pop(context);
-          Navigator.pop(context);
+          Navigator.pop(context); // Loading dialog එක pop කරනවා
+          Navigator.pop(context); // Screen එකෙන් පිටතට (Home එකට) යනවා
         }
       } else {
-
         if (mounted) Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -121,22 +116,10 @@ class _AddTargetScreenState extends State<AddTargetScreen> {
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    "1 Week",
-                    style: TextStyle(color: Colors.grey, fontSize: 10),
-                  ),
-                  Text(
-                    "2 Weeks",
-                    style: TextStyle(color: Colors.grey, fontSize: 10),
-                  ),
-                  Text(
-                    "3 Weeks",
-                    style: TextStyle(color: Colors.grey, fontSize: 10),
-                  ),
-                  Text(
-                    "4 Weeks",
-                    style: TextStyle(color: Colors.grey, fontSize: 10),
-                  ),
+                  Text("1 Week", style: TextStyle(color: Colors.grey, fontSize: 10)),
+                  Text("2 Weeks", style: TextStyle(color: Colors.grey, fontSize: 10)),
+                  Text("3 Weeks", style: TextStyle(color: Colors.grey, fontSize: 10)),
+                  Text("4 Weeks", style: TextStyle(color: Colors.grey, fontSize: 10)),
                 ],
               ),
 
