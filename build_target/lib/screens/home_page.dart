@@ -191,60 +191,78 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildGoalCard(Map<String, dynamic> goal, int progress) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => GoalDetailsScreen(goal: goal),
-          ),
-        ).then((_) => setState(() {}));
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+    return Dismissible(
+      key: Key(goal['id'].toString()),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFD700),
+          color: Colors.redAccent, 
           borderRadius: BorderRadius.circular(15),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                goal['goal_name'],
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
+        child: const Icon(Icons.delete, color: Colors.white, size: 30),
+      ),
+      onDismissed: (direction) async {
+        final db = await DBHelper.database;
+        await db.delete('Goals', where: 'id = ?', whereArgs: [goal['id']]);
+        setState(() {}); // UI එක refresh කරන්න
+      },
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GoalDetailsScreen(goal: goal),
             ),
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 45,
-                  height: 45,
-                  child: CircularProgressIndicator(
-                    value: progress / 100,
-                    backgroundColor: Colors.black12,
-                    color: const Color(0xFF4CAF50),
-                    strokeWidth: 4,
-                  ),
-                ),
-                Text(
-                  "$progress%",
+          ).then((_) => setState(() {}));
+        },
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFD700),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  goal['goal_name'],
                   style: const TextStyle(
                     color: Colors.black,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ),
-          ],
+              ),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 45,
+                    height: 45,
+                    child: CircularProgressIndicator(
+                      value: progress / 100,
+                      backgroundColor: Colors.black12,
+                      color: const Color(0xFF4CAF50),
+                      strokeWidth: 4,
+                    ),
+                  ),
+                  Text(
+                    "$progress%",
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
