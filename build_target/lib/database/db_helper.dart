@@ -20,14 +20,14 @@ class DBHelper {
         await db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: (db, version) async {
-        // 1. Users Table (Added Streak and Activity Tracking)
+        // 1. Users Table
         await db.execute('''
           CREATE TABLE Users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
             current_level TEXT,
             total_xp INTEGER,
-            last_activity_date TEXT, -- YYYY-MM-DD
+            last_activity_date TEXT,
             current_streak INTEGER DEFAULT 0,
             longest_streak INTEGER DEFAULT 0
           )
@@ -59,7 +59,7 @@ class DBHelper {
           )
         ''');
 
-        // 4. Trophies Table (Count-based tracking for the Cabinet)
+        // 4. Trophies Table
         await db.execute('''
           CREATE TABLE Trophies (
             user_id INTEGER PRIMARY KEY,
@@ -71,36 +71,6 @@ class DBHelper {
             FOREIGN KEY (user_id) REFERENCES Users (id) ON DELETE CASCADE
           )
         ''');
-
-        // --- Initial Data Setup ---
-        
-        int userId = await db.insert('Users', {
-          'name': 'Ravindu',
-          'current_level': 'Elite Master',
-          'total_xp': 1250,
-          'last_activity_date': '', // Initially empty
-          'current_streak': 0,
-          'longest_streak': 0,
-        });
-
-        await db.insert('Trophies', {'user_id': userId});
-
-        // Dummy Goal and Task for testing
-        int goalId = await db.insert('Goals', {
-          'user_id': userId,
-          'goal_name': 'Learning Java',
-          'full_plan_content': '{"description": "Master Spring Boot and JPA"}',
-          'status': 'active'
-        });
-
-        await db.insert('Tasks', {
-          'goal_id': goalId,
-          'task_title': 'Setup Environment',
-          'week_number': 1,
-          'day_number': 1,
-          'task_desc': 'Install JDK and IntelliJ IDEA',
-          'is_done': 0 // Keeping it 0 so you can test checking it
-        });
       },
     );
   }
