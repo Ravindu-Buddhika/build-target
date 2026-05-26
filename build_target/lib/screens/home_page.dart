@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../database/db_helper.dart'; 
 import 'package:build_target/screens/add_target_screen.dart';
 import 'goal_details_screen.dart';
-import 'achievement_screen.dart'; // Trophy Cabinet screen එක import කරගන්න
+import 'achievement_screen.dart'; 
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,6 +12,42 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  
+  // XP අනුව Level එක සහ Image එක තීරණය කරන Helper Function එක
+  Map<String, String> _getLevelData(int xp) {
+    if (xp >= 5000) {
+      return {
+        'name': 'MYTHIC LEGEND',
+        'image': 'assets/images/Mythic_Legend-removebg-preview.png'
+      };
+    } else if (xp >= 2500) {
+      return {
+        'name': 'ELITE MASTER',
+        'image': 'assets/images/Elite_Master-removebg-preview.png'
+      };
+    } else if (xp >= 1200) {
+      return {
+        'name': 'PLATINUM COMMANDER',
+        'image': 'assets/images/Platinum_Commander-removebg-preview.png'
+      };
+    } else if (xp >= 500) {
+      return {
+        'name': 'GOLD VETERAN',
+        'image': 'assets/images/Gold_Veteran-removebg-preview.png'
+      };
+    } else if (xp >= 100) {
+      return {
+        'name': 'SILVER SCOUT',
+        'image': 'assets/images/Silver_Scout-removebg-preview.png'
+      };
+    } else {
+      return {
+        'name': 'BRONZE RECRUIT',
+        'image': 'assets/images/Bronze_Recruit-removebg-preview.png'
+      };
+    }
+  }
+
   Future<Map<String, dynamic>> _fetchHomeData() async {
     final db = await DBHelper.database;
     final userList = await db.query('Users', limit: 1);
@@ -73,8 +109,11 @@ class _HomePageState extends State<HomePage> {
           final goals = snapshot.data!['goals'] as List<Map<String, dynamic>>;
           final doneCount = snapshot.data!['doneCount'];
           
-          // DB එකෙන් dynamic ව එන current streak එක ගන්නවා (නැත්නම් 0)
           final currentStreak = user['current_streak']?.toString() ?? "0";
+          final int totalXp = user['total_xp'] ?? 0; // DB එකෙන් XP අගය ගන්නවා
+
+          // දැනට තියෙන XP වලට අදාළ Level data ටික ගන්නවා
+          final levelData = _getLevelData(totalXp);
 
           return SafeArea(
             child: SingleChildScrollView(
@@ -87,12 +126,10 @@ class _HomePageState extends State<HomePage> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(20),
                       onTap: () {
-                        // Hero Section එක ක්ලික් කරාම Trophy Cabinet එකට යනවා
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const AchievementScreen()),
                         ).then((_) {
-                          // Cabinet එකේ ඉඳන් ආපහු එද්දී home එක refresh වෙන්න
                           setState(() {});
                         });
                       },
@@ -119,20 +156,25 @@ class _HomePageState extends State<HomePage> {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const Text(
-                                      "Lets Achieve something",
-                                      style: TextStyle(
-                                        color: Colors.black54,
-                                        fontSize: 12,
+                                    // Hard-coded text එක වෙනුවට Dynamic Level Name එක දැම්මා
+                                    Text(
+                                      levelData['name']!,
+                                      style: const TextStyle(
+                                        color: Colors.black87,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 1.2,
                                       ),
                                     ),
                                   ],
                                 ),
+                                // Hard-coded image එක වෙනුවට Dynamic Image Path එක දැම්මා
                                 Image.asset(
-                                  'assets/images/Elite_Master-removebg-preview.png',
+                                  levelData['image']!,
                                   width: 100,
                                   height: 100,
-                                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, size: 50),
+                                  errorBuilder: (context, error, stackTrace) => 
+                                    const Icon(Icons.workspace_premium, size: 60, color: Colors.amber),
                                 ),
                               ],
                             ),
@@ -140,7 +182,6 @@ class _HomePageState extends State<HomePage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
-                                // මෙතනට dynamic streak එක පාස් කළා
                                 _buildStatItem(currentStreak, "Strike"),
                                 _buildStatItem(goals.length.toString(), "Active"),
                                 _buildStatItem(doneCount.toString(), "Done"),
