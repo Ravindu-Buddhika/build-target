@@ -19,12 +19,40 @@ dependencies:
   google_generative_ai: ^0.4.7
 
   cupertino_icons: ^1.0.8
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^6.0.0
+  
+  # App Icon සහ Splash Screen වෙනස් කිරීම සඳහා Packages
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
+
+# Homescreen App Icon එක සඳහා Configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/icon.jpg"
+  # Gradient එකේ පල්ලෙහාම තියෙන Gold/Amber පාට මෙතනට දෙනවා:
+  adaptive_icon_background: "#FFC107" 
+  # සම්පූර්ණ ඉමේජ් එකම Foreground එක විදිහට ගන්නවා:
+  adaptive_icon_foreground: "assets/images/icon.jpg"
+  # වටේ කැපෙන එක නවත්වන්න Inset එක 0 කරන්න (මොකද අපිට මුළු රූපයම ඕන නිසා):
+  adaptive_icon_foreground_inset: 0
+
+# App එක Load වෙද්දී එන Splash Screen එක සඳහා Configuration
+flutter_native_splash:
+  # Splash Screen එකේ පසුබිම අලුත් අයිකන් එකේ පාටට (Gold) ගැලපෙන්න වෙනස් කළා
+  color: "#FFD700" 
+  image: "assets/images/icon.jpg" # ඔයාගේ අලුත් Gradient icon එක
+  
+  android_12:
+    image: "assets/images/icon.jpg"
+    # Android 12 සහ ඉහළ ෆෝන් වලටත් මේ පාටම සෙට් කළා
+    color: "#FFD700"
 
 flutter:
   uses-material-design: true
