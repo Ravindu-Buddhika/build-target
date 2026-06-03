@@ -1,68 +1,327 @@
 import 'package:flutter/material.dart';
+import '../database/db_helper.dart'; 
+import 'package:build_target/screens/add_target_screen.dart';
+import 'goal_details_screen.dart';
+import 'achievement_screen.dart'; 
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  
+  // XP අනුව Level එක සහ Image එක තීරණය කරන Helper Function එක
+  Map<String, String> _getLevelData(int xp) {
+    if (xp >= 5000) {
+      return {
+        'name': 'MYTHIC LEGEND',
+        'image': 'assets/images/Mythic_Legend-removebg-preview.png'
+      };
+    } else if (xp >= 2500) {
+      return {
+        'name': 'ELITE MASTER',
+        'image': 'assets/images/Elite_Master-removebg-preview.png'
+      };
+    } else if (xp >= 1200) {
+      return {
+        'name': 'PLATINUM COMMANDER',
+        'image': 'assets/images/Platinum_Commander-removebg-preview.png'
+      };
+    } else if (xp >= 500) {
+      return {
+        'name': 'GOLD VETERAN',
+        'image': 'assets/images/Gold_Veteran-removebg-preview.png'
+      };
+    } else if (xp >= 100) {
+      return {
+        'name': 'SILVER SCOUT',
+        'image': 'assets/images/Silver_Scout-removebg-preview.png'
+      };
+    } else {
+      return {
+        'name': 'BRONZE RECRUIT',
+        'image': 'assets/images/Bronze_Recruit-removebg-preview.png'
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> _fetchHomeData() async {
+    final db = await DBHelper.database;
+    final userList = await db.query('Users', limit: 1);
+    final goalsList = await db.query('Goals');
+
+    List<Map<String, dynamic>> goalsWithProgress = [];
+    int totalDoneGoals = 0;
+
+    for (var goal in goalsList) {
+      final tasks = await db.query(
+        'Tasks',
+        where: 'goal_id = ?',
+        whereArgs: [goal['id']],
+      );
+
+      double progress = 0;
+      if (tasks.isNotEmpty) {
+        int doneTasks = tasks.where((t) => t['is_done'] == 1).length;
+        progress = (doneTasks / tasks.length) * 100;
+        
+        if (progress == 100) totalDoneGoals++;
+      }
+
+      var goalMap = Map<String, dynamic>.from(goal);
+      goalMap['computed_progress'] = progress.toInt();
+      goalsWithProgress.add(goalMap);
+    }
+
+    return {
+      'user': userList.isNotEmpty ? userList.first : null,
+      'goals': goalsWithProgress,
+      'doneCount': totalDoneGoals,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
-      appBar: AppBar(
-        title: const Text('Build Target'),
-        backgroundColor: Colors.amber,
-        foregroundColor: Colors.black,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView( // Screen එක මදි වුණොත් scroll කරන්න පුළුවන් වෙන්න
-        child: Column(
-          children: [
-            const SizedBox(height: 40),
-            const Center(
+      backgroundColor: const Color(0xFF000000),
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _fetchHomeData(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.amber),
+            );
+          }
+
+          if (!snapshot.hasData || snapshot.data!['user'] == null) {
+            return const Center(
               child: Text(
-                'Welcome Back, Ravindu!',
-                style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                "No User Data Found",
+                style: TextStyle(color: Colors.white),
+              ),
+            );
+          }
+
+          final user = snapshot.data!['user'];
+          final goals = snapshot.data!['goals'] as List<Map<String, dynamic>>;
+          final doneCount = snapshot.data!['doneCount'];
+          
+          final currentStreak = user['current_streak']?.toString() ?? "0";
+          final int totalXp = user['total_xp'] ?? 0; // DB එකෙන් XP අගය ගන්නවා
+
+          // දැනට තියෙන XP වලට අදාළ Level data ටික ගන්නවා
+          final levelData = _getLevelData(totalXp);
+
+          return SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AchievementScreen()),
+                        ).then((_) {
+                          setState(() {});
+                        });
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E2BE),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Hello ${user['name']}",
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    // Hard-coded text එක වෙනුවට Dynamic Level Name එක දැම්මා
+                                    Text(
+                                      levelData['name']!,
+                                      style: const TextStyle(
+                                        color: Colors.black87,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                // Hard-coded image එක වෙනුවට Dynamic Image Path එක දැම්මා
+                                Image.asset(
+                                  levelData['image']!,
+                                  width: 100,
+                                  height: 100,
+                                  errorBuilder: (context, error, stackTrace) => 
+                                    const Icon(Icons.workspace_premium, size: 60, color: Colors.amber),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 30),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildStatItem(currentStreak, "Strike"),
+                                _buildStatItem(goals.length.toString(), "Active"),
+                                _buildStatItem(doneCount.toString(), "Done"),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    child: Column(
+                      children: goals.map((goal) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 15),
+                          child: _buildGoalCard(
+                            goal,
+                            goal['computed_progress'] ?? 0,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 30),
-            
-            // ඔයාගේ ප්‍රධාන Badge එක
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                shape: BoxShape.circle,
-              ),
-              child: Image.asset(
-                'assets/images/Elite_Master-removebg-preview .png',
-                width: 180,
-                height: 180,
-              ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddTargetScreen()),
+          ).then((_) {
+            setState(() {});
+          });
+        },
+        backgroundColor: const Color(0xFFFFD700),
+        child: const Icon(Icons.add, color: Colors.black, size: 30),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String value, String label) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.black54, fontSize: 14),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGoalCard(Map<String, dynamic> goal, int progress) {
+    return Dismissible(
+      key: Key(goal['id'].toString()),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: Colors.redAccent, 
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: const Icon(Icons.delete, color: Colors.white, size: 30),
+      ),
+      onDismissed: (direction) async {
+        final db = await DBHelper.database;
+        await db.delete('Goals', where: 'id = ?', whereArgs: [goal['id']]);
+        setState(() {}); 
+      },
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GoalDetailsScreen(goal: goal),
             ),
-            
-            const SizedBox(height: 20),
-            const Text(
-              'Elite Master',
-              style: TextStyle(color: Colors.amber, fontSize: 20, letterSpacing: 1.5),
-            ),
-            
-            const SizedBox(height: 50),
-            
-            // ලස්සන Button එකක් (React වල button එකක් වගේ)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ).then((_) => setState(() {}));
+        },
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFD700),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  goal['goal_name'],
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                onPressed: () {
-                  print("View Tasks Clicked!");
-                },
-                child: const Text('View Daily Tasks', style: TextStyle(color: Colors.black, fontSize: 18)),
               ),
-            ),
-          ],
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 45,
+                    height: 45,
+                    child: CircularProgressIndicator(
+                      value: progress / 100,
+                      backgroundColor: Colors.black12,
+                      color: const Color(0xFF4CAF50),
+                      strokeWidth: 4,
+                    ),
+                  ),
+                  Text(
+                    "$progress%",
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
