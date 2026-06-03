@@ -4,11 +4,46 @@ import '../database/db_helper.dart';
 class AchievementScreen extends StatelessWidget {
   const AchievementScreen({super.key});
 
+  // XP අනුව Title එක සහ Image එක තීරණය කරන Helper Function එක
+  Map<String, String> _getLevelData(int xp) {
+    if (xp >= 5000) {
+      return {
+        'name': 'MYTHIC LEGEND',
+        'image': 'assets/images/Mythic_Legend-removebg-preview.png'
+      };
+    } else if (xp >= 2500) {
+      return {
+        'name': 'ELITE MASTER',
+        'image': 'assets/images/Elite_Master-removebg-preview.png'
+      };
+    } else if (xp >= 1200) {
+      return {
+        'name': 'PLATINUM COMMANDER',
+        'image': 'assets/images/Platinum_Commander-removebg-preview.png'
+      };
+    } else if (xp >= 500) {
+      return {
+        'name': 'GOLD VETERAN',
+        'image': 'assets/images/Gold_Veteran-removebg-preview.png'
+      };
+    } else if (xp >= 100) {
+      return {
+        'name': 'SILVER SCOUT',
+        'image': 'assets/images/Silver_Scout-removebg-preview.png'
+      };
+    } else {
+      return {
+        'name': 'BRONZE RECRUIT',
+        'image': 'assets/images/Bronze_Recruit-removebg-preview.png'
+      };
+    }
+  }
+
   Future<Map<String, dynamic>> _getAchievementData() async {
     final db = await DBHelper.database;
-    // User ගේ විස්තර සහ Trophies count එක එක පාර ගන්නවා
+    // Users table එකෙන් total_xp අගයත් එක්කම දත්ත ලබාගන්නවා
     final List<Map<String, dynamic>> result = await db.rawQuery('''
-      SELECT Users.name, Users.current_level, Trophies.* FROM Users 
+      SELECT Users.name, Users.total_xp, Trophies.* FROM Users 
       JOIN Trophies ON Users.id = Trophies.user_id 
       WHERE Users.id = 1
     ''');
@@ -42,19 +77,23 @@ class AchievementScreen extends StatelessWidget {
           }
 
           final data = snapshot.data!;
+          final int totalXp = data['total_xp'] ?? 0;
+          final levelData = _getLevelData(totalXp);
           
           return Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 10),
               
-              // --- Elite Master Section ---
+              // --- Dynamic Level Section ---
               Center(
                 child: Column(
                   children: [
                     Image.asset(
-                      'assets/images/Elite_Master-removebg-preview.png', 
+                      levelData['image']!, 
                       height: 180,
+                      errorBuilder: (context, error, stackTrace) => 
+                        const Icon(Icons.workspace_premium, size: 100, color: Colors.amber),
                     ), 
                     const Text(
                       "Current Title", 
@@ -62,7 +101,7 @@ class AchievementScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 5),
                     Text(
-                      data['current_level'] ?? "ELITE MASTER",
+                      levelData['name']!,
                       style: const TextStyle(
                         color: Colors.yellow, 
                         fontSize: 26, 
@@ -80,18 +119,17 @@ class AchievementScreen extends StatelessWidget {
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 20),
                 padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 25),
-                // Expanded වෙනුවට මෙතනට Figma එකට ගැලපෙන fixed height එකක් දුන්නා
                 height: 280, 
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE2E2BE), // Home card එකේම පාට ලස්සනට ගැලපෙනවා
-                  borderRadius: BorderRadius.circular(20), // පැති හතරම සමානව රවුම් කළා
+                  color: const Color(0xFFE2E2BE), 
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: GridView.count(
-                  crossAxisCount: 3, // පේළියකට 3 බැගින්
+                  crossAxisCount: 3, 
                   mainAxisSpacing: 15,
                   crossAxisSpacing: 10,
-                  padding: EdgeInsets.zero, // උඩ තිබ්බ අනවශ්‍ය හිස් ඉඩ අයින් කළා
-                  physics: const NeverScrollableScrollPhysics(), // Card එක ඇතුළේ scroll වෙන එක නැවැත්තුවා
+                  padding: EdgeInsets.zero, 
+                  physics: const NeverScrollableScrollPhysics(), 
                   children: [
                     _buildTrophyItem("First Spark", data['first_spark_count'] ?? 0),
                     _buildTrophyItem("Triple Threat", data['triple_threat_count'] ?? 0),
@@ -112,7 +150,6 @@ class AchievementScreen extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Trophies වලට රතු පාට Icon එක
         const Icon(Icons.emoji_events, color: Colors.redAccent, size: 45), 
         const SizedBox(height: 6),
         Text(
